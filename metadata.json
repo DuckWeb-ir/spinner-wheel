@@ -1,0 +1,6 @@
+{
+  "name": "Lucky Spinner Wheel",
+  "description": "An interactive, fully responsive Lucky Wheel (گردونه شانس) designed for mobile and desktop to draw names randomly.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
