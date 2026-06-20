@@ -60,6 +60,72 @@ export default function App() {
     return false;
   });
 
+  // PWA (Progressive Web App) Install Prompts
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState<boolean>(false);
+  const [isIOS, setIsIOS] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    // Check if user is on iOS and hasn't installed PWA yet
+    if (typeof window !== "undefined" && typeof navigator !== "undefined") {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+      const isStandalone = (window.navigator as any).standalone || window.matchMedia("(display-mode: standalone)").matches;
+      
+      if (isIosDevice && !isStandalone) {
+        setIsIOS(true);
+      }
+    }
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      setShowInstallBanner(false);
+    }
+    setDeferredPrompt(null);
+  };
+
+  const triggerInstallFlow = async () => {
+    if (soundEnabled) playBtnClick();
+    if (deferredPrompt) {
+      try {
+        await deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === "accepted") {
+          setShowInstallBanner(false);
+        }
+        setDeferredPrompt(null);
+      } catch (err) {
+        console.warn("PWA install prompt failed", err);
+        setShowInstallBanner(true);
+      }
+    } else {
+      const userAgent = (typeof navigator !== "undefined" ? navigator.userAgent : "").toLowerCase();
+      const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+      if (isIosDevice) {
+        setIsIOS(true);
+        setShowInstallBanner(false);
+      } else {
+        setShowInstallBanner(true);
+      }
+    }
+  };
+
   const handleBackgroundClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (!target.closest("button, input, select, textarea, canvas, a, [role='button']")) {
@@ -199,6 +265,74 @@ export default function App() {
       {/* Celebration Confetti Engine */}
       <ConfettiCanvas active={showWinnerModal} />
 
+      {/* PWA Standard Install Banner */}
+      <AnimatePresence>
+        {showInstallBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="w-full max-w-xl mx-auto mb-4 bg-zinc-900/90 border border-orange-500/20 backdrop-blur-md p-4 rounded-2xl flex items-center justify-between shadow-[0_8px_30px_rgb(0,0,0,0.4)] relative z-40"
+            dir="rtl"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20 shadow-inner">
+                <Sparkles size={18} className="text-orange-400 animate-pulse" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-white matches-tahoma">نصب اپلیکیشن گردونه شانس</h4>
+                <p className="text-[10px] text-zinc-400 matches-tahoma mt-1 leading-relaxed">برنامه را روی گوشی یا کامپیوتر نصب کنید تا بدون نیاز به اینترنت و با سرعت بالا اجرا شود.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 mr-3">
+              <button
+                onClick={handleInstallClick}
+                className="bg-gradient-to-tr from-orange-500 to-amber-400 hover:from-orange-400 hover:to-amber-300 text-neutral-950 text-[11px] font-black px-4 py-2 rounded-lg cursor-pointer transition-all shadow-md active:scale-95 matches-tahoma whitespace-nowrap"
+              >
+                نصب برنامه
+              </button>
+              <button
+                onClick={() => setShowInstallBanner(false)}
+                className="text-zinc-400 hover:text-zinc-200 text-xs px-2 py-2 transition-all cursor-pointer matches-tahoma"
+              >
+                بعداً
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* PWA iOS installation guide banner */}
+        {isIOS && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="w-full max-w-xl mx-auto mb-4 bg-zinc-900/90 border border-indigo-500/20 backdrop-blur-md p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_8px_30px_rgb(0,0,0,0.4)] relative z-40"
+            dir="rtl"
+          >
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 shadow-inner shrink-0">
+                <Crown size={18} className="text-indigo-400 animate-pulse" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-white matches-tahoma">نصب گردونه شانس روی آیفون (iOS)</h4>
+                <p className="text-[10px] text-zinc-400 matches-tahoma mt-1 leading-relaxed">
+                  در پایین صفحه مرورگر دکمه <strong className="text-indigo-300 font-bold">اشتراک‌گذاری (Share)</strong> را زده و در منوی باز شده گزینه <strong className="text-indigo-300 font-bold">Add to Home Screen</strong> را انتخاب کنید.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end">
+              <button
+                onClick={() => setIsIOS(false)}
+                className="text-zinc-400 hover:text-zinc-200 text-xs px-3 py-1.5 transition-all cursor-pointer border border-zinc-800 rounded-lg matches-tahoma"
+              >
+                متوجه شدم
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Top Main Navigation Header */}
       <header className="w-full max-w-xl mx-auto flex items-center justify-between border-b border-zinc-800/50 pb-4 mb-6" dir="rtl">
         <div className="flex items-center gap-3">
@@ -229,10 +363,17 @@ export default function App() {
               )}
             </AnimatePresence>
           </div>
-          <div>
-            <h1 className="text-xl md:text-2xl font-black bg-gradient-to-l from-orange-400 to-amber-200 bg-clip-text text-transparent leading-none matches-tahoma">
-              گردونه شانس
-            </h1>
+          <div className="flex flex-col items-start">
+            <button
+              onClick={triggerInstallFlow}
+              className="text-right block select-none cursor-pointer focus:outline-none transition-all active:scale-95 group"
+              title="نصب اپلیکیشن گردونه شانس"
+            >
+              <h1 className="text-xl md:text-2xl font-black bg-gradient-to-l from-orange-400 to-amber-200 bg-clip-text text-transparent leading-none matches-tahoma hover:opacity-80 flex items-center gap-1.5">
+                گردونه شانس
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse inline-block" />
+              </h1>
+            </button>
             <p className="text-[10px] text-zinc-400 font-semibold mt-1 font-sans">
               سیستم هوشمند قرعه‌کشی و انتخاب تصادفی اسامی
             </p>
